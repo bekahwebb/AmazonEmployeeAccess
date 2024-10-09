@@ -58,7 +58,7 @@ plot3 / plot4 #stacked
 # Feature Engineering
 sweet_recipe <- recipe(ACTION~., data=amazon_train) %>%
   step_mutate_at(all_numeric_predictors(), fn = factor) %>% # turn all numeric features into factors
-  step_other(all_nominal_predictors(), threshold = .001) %>% # combines rare categories that occur less often
+  step_other(all_nominal_predictors(), threshold = .01) %>% # combines rare categories that occur less often
   step_dummy(all_nominal_predictors())%>%
   step_normalize(all_predictors())
 
@@ -74,5 +74,32 @@ ncol(baked)
 colnames(baked)
 colnames(amazon_train)
 #10 column names [1] "ACTION"           "RESOURCE"         "MGR_ID"           "ROLE_ROLLUP_1"    "ROLE_ROLLUP_2"   
-#[6] "ROLE_DEPTNAME"    "ROLE_TITLE"       "ROLE_FAMILY_DESC" "ROLE_FAMILY"      "ROLE_CODE"    
+#[6] "ROLE_DEPTNAME"    "ROLE_TITLE"       "ROLE_FAMILY_DESC" "ROLE_FAMILY"      "ROLE_CODE"  
 
+#logistic regression 10/9/24
+
+logRegModel <- logistic_reg() %>% #Type of model
+  set_engine("glm")
+
+## Put into a workflow here
+## Combine into a Workflow and fit
+logReg_workflow <- workflow() %>% #sets up a series of steps that you can apply to any dataset
+  add_recipe(sweet_recipe) %>%
+  add_model(logRegModel) %>%
+  fit(data=amazon_train)#fit the workflow
+
+## Make predictions
+amazon_predictions <- predict(logReg_workflow,
+                              new_data=amazon_test,
+                              type="prob") # "class" or "prob" (see doc)
+
+## Format the Predictions for Submission to Kaggle
+logistic_kaggle_submission <- amazon_predictions%>%
+  rename(ACTION=.pred_1) %>%
+  select(ACTION) %>%
+  bind_cols(., amazon_test) %>% #Bind predictions with test data
+  select(id, ACTION)  #keep Id, ACTION for submission
+
+## Write out the file
+  vroom_write(x=logistic_kaggle_submission, file="logisticPreds.csv", delim=",")
+  #.70429 public .69688
