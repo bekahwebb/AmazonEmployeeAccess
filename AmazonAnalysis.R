@@ -58,8 +58,8 @@ plot3 / plot4 #stacked
 # Feature Engineering
 sweet_recipe <- recipe(ACTION~., data=amazon_train) %>%
   step_mutate_at(all_numeric_predictors(), fn = factor) %>% # turn all numeric features into factors
-  step_other(all_nominal_predictors(), threshold = .01) %>% # combines rare categories that occur less often
-  step_dummy(all_nominal_predictors())%>%
+  step_other(all_nominal_predictors(), threshold = .00001) %>% # combines rare categories that occur less often
+  step_lencode_mixed(all_nominal_predictors(), outcome = vars(ACTION))%>% #target encoding
   step_normalize(all_predictors())
 
 
@@ -103,3 +103,56 @@ logistic_kaggle_submission <- amazon_predictions%>%
 ## Write out the file
   vroom_write(x=logistic_kaggle_submission, file="logisticPreds.csv", delim=",")
   #.70429 public .69688
+  
+  #penalized logistic regression 10/11/24
+ penalize_logistic_mod <- logistic_reg(mixture=tune(), penalty=tune()) %>% #Type of model
+    set_engine("glmnet")
+  
+  amazon_workflow <- workflow() %>%
+  add_recipe(sweet_recipe) %>%
+  add_model(penalize_logistic_mod)
+  
+  ## Grid of values to tune over10
+  tuning_grid <- grid_regular(penalty(),
+                              mixture(),
+                              levels = 5) ## L^2 total tuning possibilities
+  
+  ## Split data for CV15
+  folds <- vfold_cv(amazon_train, v = 5, repeats=1)
+  
+  ## Run the CV
+  CV_results <- amazon_workflow %>%
+  tune_grid(resamples=folds,
+            grid=tuning_grid,
+            metrics=metric_set(roc_auc, f_meas, sens, recall, spec,
+                               precision, accuracy)) #Or leave metrics NULL
+  ## Find Best Tuning Parameters
+  bestTune <- CV_results %>%
+  select_best(metric="roc_auc")
+  
+  # penalty mixture .config              
+  #<dbl>   <dbl> <chr>                
+   # 1) 0.00316     0.5 Preprocessor1_Model14
+  
+  ## Finalize the Workflow & fit it
+  final_wf <-
+  amazon_workflow %>%
+  finalize_workflow(bestTune) %>%
+  fit(data=amazon_train)
+  
+  ## Predict
+  penalized_amazon_predictions <- final_wf %>%
+  predict(new_data =amazon_test,
+          type="prob")
+  
+  ## Format the Predictions for Submission to Kaggle
+  penalized_logistic_kaggle_submission <- penalized_amazon_predictions%>%
+    rename(ACTION=.pred_1) %>%
+    select(ACTION) %>%
+    bind_cols(., amazon_test) %>% #Bind predictions with test data
+    select(id, ACTION)  #keep Id, ACTION for submission
+  
+  ## Write out the file
+  vroom_write(x=penalized_logistic_kaggle_submission, file="penalizedlogisticPreds.csv", delim=",")
+  #public score .78320 with threshold at .001
+  #public score .86225 with threshold at .00001
