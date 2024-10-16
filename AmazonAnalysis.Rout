@@ -1,0 +1,375 @@
+
+R version 4.3.3 (2024-02-29) -- "Angel Food Cake"
+Copyright (C) 2024 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(tidyverse)
+── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+✔ dplyr     1.1.4     ✔ readr     2.1.5
+✔ forcats   1.0.0     ✔ stringr   1.5.1
+✔ ggplot2   3.5.1     ✔ tibble    3.2.1
+✔ lubridate 1.9.3     ✔ tidyr     1.3.1
+✔ purrr     1.0.2     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ dplyr::filter() masks stats::filter()
+✖ dplyr::lag()    masks stats::lag()
+ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+> library(DataExplorer)
+> library(vroom)
+
+Attaching package: ‘vroom’
+
+The following objects are masked from ‘package:readr’:
+
+    as.col_spec, col_character, col_date, col_datetime, col_double,
+    col_factor, col_guess, col_integer, col_logical, col_number,
+    col_skip, col_time, cols, cols_condense, cols_only, date_names,
+    date_names_lang, date_names_langs, default_locale, fwf_cols,
+    fwf_empty, fwf_positions, fwf_widths, locale, output_column,
+    problems, spec
+
+> library(ggplot2)
+> library(tidyverse)
+> library(patchwork)
+> library(readr)
+> library(GGally)
+Registered S3 method overwritten by 'GGally':
+  method from   
+  +.gg   ggplot2
+> library(poissonreg)
+Loading required package: parsnip
+> library(recipes)
+
+Attaching package: ‘recipes’
+
+The following object is masked from ‘package:stringr’:
+
+    fixed
+
+The following object is masked from ‘package:stats’:
+
+    step
+
+> library(rsample)
+> library(magrittr)
+
+Attaching package: ‘magrittr’
+
+The following object is masked from ‘package:purrr’:
+
+    set_names
+
+The following object is masked from ‘package:tidyr’:
+
+    extract
+
+> library(tidymodels)
+── Attaching packages ────────────────────────────────────── tidymodels 1.2.0 ──
+✔ broom        1.0.7     ✔ tune         1.2.1
+✔ dials        1.3.0     ✔ workflows    1.1.4
+✔ infer        1.0.7     ✔ workflowsets 1.1.0
+✔ modeldata    1.4.0     ✔ yardstick    1.3.1
+── Conflicts ───────────────────────────────────────── tidymodels_conflicts() ──
+✖ scales::discard()     masks purrr::discard()
+✖ magrittr::extract()   masks tidyr::extract()
+✖ dplyr::filter()       masks stats::filter()
+✖ recipes::fixed()      masks stringr::fixed()
+✖ dplyr::lag()          masks stats::lag()
+✖ magrittr::set_names() masks purrr::set_names()
+✖ yardstick::spec()     masks vroom::spec(), readr::spec()
+✖ recipes::step()       masks stats::step()
+• Use suppressPackageStartupMessages() to eliminate package startup messages
+> library(lubridate)
+> library(poissonreg) #if you want to do penalized, poisson regression
+> library(rpart)
+
+Attaching package: ‘rpart’
+
+The following object is masked from ‘package:dials’:
+
+    prune
+
+> library(ranger)
+> library(stacks) # you need this library to create a stacked model
+> library(embed) # for target encoding
+> library(ggmosaic)
+
+Attaching package: ‘ggmosaic’
+
+The following object is masked from ‘package:GGally’:
+
+    happy
+
+> library(lme4)
+Loading required package: Matrix
+
+Attaching package: ‘Matrix’
+
+The following objects are masked from ‘package:tidyr’:
+
+    expand, pack, unpack
+
+> 
+> amazon_test <- vroom("./test.csv")
+Rows: 58921 Columns: 10
+── Column specification ────────────────────────────────────────────────────────
+Delimiter: ","
+dbl (10): id, RESOURCE, MGR_ID, ROLE_ROLLUP_1, ROLE_ROLLUP_2, ROLE_DEPTNAME,...
+
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+> amazon_test
+# A tibble: 58,921 × 10
+      id RESOURCE MGR_ID ROLE_ROLLUP_1 ROLE_ROLLUP_2 ROLE_DEPTNAME ROLE_TITLE
+   <dbl>    <dbl>  <dbl>         <dbl>         <dbl>         <dbl>      <dbl>
+ 1     1    78766  72734        118079        118080        117878     117879
+ 2     2    40644   4378        117961        118327        118507     118863
+ 3     3    75443   2395        117961        118300        119488     118172
+ 4     4    43219  19986        117961        118225        118403     120773
+ 5     5    42093  50015        117961        118343        119598     118422
+ 6     6    44722   1755        117961        117962        119223     125793
+ 7     7    75834  21135        117961        118343        123494     118054
+ 8     8     4675   3077        117961        118300        120312     124194
+ 9     9    18072  15575        117902        118041        118623     280788
+10    10    22680   4474        117961        118446        119064     118321
+# ℹ 58,911 more rows
+# ℹ 3 more variables: ROLE_FAMILY_DESC <dbl>, ROLE_FAMILY <dbl>,
+#   ROLE_CODE <dbl>
+> amazon_train <- vroom("./train.csv")
+Rows: 32769 Columns: 10
+── Column specification ────────────────────────────────────────────────────────
+Delimiter: ","
+dbl (10): ACTION, RESOURCE, MGR_ID, ROLE_ROLLUP_1, ROLE_ROLLUP_2, ROLE_DEPTN...
+
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+> amazon_train
+# A tibble: 32,769 × 10
+   ACTION RESOURCE MGR_ID ROLE_ROLLUP_1 ROLE_ROLLUP_2 ROLE_DEPTNAME ROLE_TITLE
+    <dbl>    <dbl>  <dbl>         <dbl>         <dbl>         <dbl>      <dbl>
+ 1      1    39353  85475        117961        118300        123472     117905
+ 2      1    17183   1540        117961        118343        123125     118536
+ 3      1    36724  14457        118219        118220        117884     117879
+ 4      1    36135   5396        117961        118343        119993     118321
+ 5      1    42680   5905        117929        117930        119569     119323
+ 6      0    45333  14561        117951        117952        118008     118568
+ 7      1    25993  17227        117961        118343        123476     118980
+ 8      1    19666   4209        117961        117969        118910     126820
+ 9      1    31246    783        117961        118413        120584     128230
+10      1    78766  56683        118079        118080        117878     117879
+# ℹ 32,759 more rows
+# ℹ 3 more variables: ROLE_FAMILY_DESC <dbl>, ROLE_FAMILY <dbl>,
+#   ROLE_CODE <dbl>
+> 
+> # turn ACTION into a factor
+> amazon_train$ACTION <- as.factor(amazon_train$ACTION)
+> 
+> #EDA
+> variable_plot <- DataExplorer::plot_intro(amazon_train) # visualization of glimpse! 
+> variable_plot
+> 
+> correlation_plot <- DataExplorer::plot_correlation(amazon_train) # correlation heat map 
+> correlation_plot
+> # 
+> # #plots 2x2 tables
+> 
+> plot2 <- ggplot(data=amazon_train) + geom_mosaic(aes(x=product(MGR_ID), fill=ACTION))
+> plot2
+Warning messages:
+1: The `scale_name` argument of `continuous_scale()` is deprecated as of ggplot2
+3.5.0. 
+2: The `trans` argument of `continuous_scale()` is deprecated as of ggplot2 3.5.0.
+ℹ Please use the `transform` argument instead. 
+3: `unite_()` was deprecated in tidyr 1.2.0.
+ℹ Please use `unite()` instead.
+ℹ The deprecated feature was likely used in the ggmosaic package.
+  Please report the issue at <https://github.com/haleyjeppson/ggmosaic>. 
+> plot3 <- ggplot(amazon_train, aes(x = ROLE_TITLE, y = ACTION)) +
++   geom_boxplot() +
++   labs(title = "Access Levels by Role Title", x = "Role Title", y = "Action")
+> plot4 <-ggplot(amazon_train, aes(x = ACTION)) +
++   geom_bar(fill = "turquoise") +
++   labs(title = "Distribution of ACTION", x = "ACTION", y = "Frequency")
+> 
+> plot3
+> plot4
+> 
+> 
+> # plot1 + plot2 #side by side
+> plot3 / plot4 #stacked
+> 
+> 
+> # Feature Engineering
+> sweet_recipe <- recipe(ACTION~., data=amazon_train) %>%
++   step_mutate_at(all_numeric_predictors(), fn = factor) %>% # turn all numeric features into factors
++   step_other(all_nominal_predictors(), threshold = .00001) %>% # combines rare categories that occur less often
++   step_lencode_mixed(all_nominal_predictors(), outcome = vars(ACTION))%>% #target encoding
++   step_normalize(all_predictors())
+> 
+> 
+> # NOTE: some of these step functions are not appropriate to use together
+> 
+> # apply the recipe to your data
+> prep_recipe <- prep(sweet_recipe)
+> baked <- bake(prep_recipe, new_data = amazon_train)
+> baked
+# A tibble: 32,769 × 10
+   RESOURCE MGR_ID ROLE_ROLLUP_1 ROLE_ROLLUP_2 ROLE_DEPTNAME ROLE_TITLE
+      <dbl>  <dbl>         <dbl>         <dbl>         <dbl>      <dbl>
+ 1  -0.351  -0.954        -0.141        -0.278      -0.00436     -0.469
+ 2  -0.0555 -0.588        -0.141        -0.955       1.12        -0.334
+ 3  -0.290  -0.465         1.02          0.879       0.746        1.24 
+ 4  -0.223  -0.988        -0.141        -0.955      -1.25         0.773
+ 5  -0.594  -0.573         0.614         1.67        2.11         1.36 
+ 6   1.29    2.02          0.419         0.474       1.18         0.675
+ 7   0.389  -0.709        -0.141        -0.955      -0.923        0.605
+ 8  -0.891  -0.524        -0.141         0.707      -0.118        0.456
+ 9  -0.407  -0.797        -0.141        -0.673       0.101        0.881
+10  -0.773  -0.418         3.47          2.69        0.503        1.24 
+# ℹ 32,759 more rows
+# ℹ 4 more variables: ROLE_FAMILY_DESC <dbl>, ROLE_FAMILY <dbl>,
+#   ROLE_CODE <dbl>, ACTION <fct>
+> ncol(baked)
+[1] 10
+> #1050 column names
+> colnames(baked)
+ [1] "RESOURCE"         "MGR_ID"           "ROLE_ROLLUP_1"    "ROLE_ROLLUP_2"   
+ [5] "ROLE_DEPTNAME"    "ROLE_TITLE"       "ROLE_FAMILY_DESC" "ROLE_FAMILY"     
+ [9] "ROLE_CODE"        "ACTION"          
+> colnames(amazon_train)
+ [1] "ACTION"           "RESOURCE"         "MGR_ID"           "ROLE_ROLLUP_1"   
+ [5] "ROLE_ROLLUP_2"    "ROLE_DEPTNAME"    "ROLE_TITLE"       "ROLE_FAMILY_DESC"
+ [9] "ROLE_FAMILY"      "ROLE_CODE"       
+> #10 column names [1] "ACTION"           "RESOURCE"         "MGR_ID"           "ROLE_ROLLUP_1"    "ROLE_ROLLUP_2"   
+> #[6] "ROLE_DEPTNAME"    "ROLE_TITLE"       "ROLE_FAMILY_DESC" "ROLE_FAMILY"      "ROLE_CODE"  
+> 
+> #logistic regression 10/9/24
+> 
+> logRegModel <- logistic_reg() %>% #Type of model
++   set_engine("glm")
+> 
+> ## Put into a workflow here
+> ## Combine into a Workflow and fit
+> logReg_workflow <- workflow() %>% #sets up a series of steps that you can apply to any dataset
++   add_recipe(sweet_recipe) %>%
++   add_model(logRegModel) %>%
++   fit(data=amazon_train)#fit the workflow
+> 
+> ## Make predictions
+> amazon_predictions <- predict(logReg_workflow,
++                               new_data=amazon_test,
++                               type="prob") # "class" or "prob" (see doc)
+> 
+> ## Format the Predictions for Submission to Kaggle
+> logistic_kaggle_submission <- amazon_predictions%>%
++   rename(ACTION=.pred_1) %>%
++   select(ACTION) %>%
++   bind_cols(., amazon_test) %>% #Bind predictions with test data
++   select(id, ACTION)  #keep Id, ACTION for submission
+> 
+> ## Write out the file
+>   vroom_write(x=logistic_kaggle_submission, file="logisticPreds.csv", delim=",")
+>   #.70429 public .69688
+>   
+>   #penalized logistic regression 10/11/24
+>  penalize_logistic_mod <- logistic_reg(mixture=tune(), penalty=tune()) %>% #Type of model
++     set_engine("glmnet")
+>   
+>   amazon_workflow <- workflow() %>%
++   add_recipe(sweet_recipe) %>%
++   add_model(penalize_logistic_mod)
+>   
+>   ## Grid of values to tune over10
+>   tuning_grid <- grid_regular(penalty(),
++                               mixture(),
++                               levels = 5) ## L^2 total tuning possibilities
+>   
+>   ## Split data for CV15
+>   folds <- vfold_cv(amazon_train, v = 5, repeats=1)
+>   
+>   ## Run the CV
+>   CV_results <- amazon_workflow %>%
++   tune_grid(resamples=folds,
++             grid=tuning_grid,
++             metrics=metric_set(roc_auc, f_meas, sens, recall, spec,
++                                precision, accuracy)) #Or leave metrics NULL
+→ A | warning: While computing binary `precision()`, no predicted events were detected (i.e.
+               `true_positive + false_positive = 0`).
+               Precision is undefined in this case, and `NA` will be returned.
+               Note that 384 true event(s) actually occurred for the problematic event level,
+               0
+There were issues with some computations   A: x1
+→ B | warning: While computing binary `precision()`, no predicted events were detected (i.e.
+               `true_positive + false_positive = 0`).
+               Precision is undefined in this case, and `NA` will be returned.
+               Note that 371 true event(s) actually occurred for the problematic event level,
+               0
+There were issues with some computations   A: x1There were issues with some computations   A: x1   B: x1
+→ C | warning: While computing binary `precision()`, no predicted events were detected (i.e.
+               `true_positive + false_positive = 0`).
+               Precision is undefined in this case, and `NA` will be returned.
+               Note that 367 true event(s) actually occurred for the problematic event level,
+               0
+There were issues with some computations   A: x1   B: x1There were issues with some computations   A: x1   B: x1   C: x1
+→ D | warning: While computing binary `precision()`, no predicted events were detected (i.e.
+               `true_positive + false_positive = 0`).
+               Precision is undefined in this case, and `NA` will be returned.
+               Note that 382 true event(s) actually occurred for the problematic event level,
+               0
+There were issues with some computations   A: x1   B: x1   C: x1There were issues with some computations   A: x1   B: x1   C: x1   D: x1
+→ E | warning: While computing binary `precision()`, no predicted events were detected (i.e.
+               `true_positive + false_positive = 0`).
+               Precision is undefined in this case, and `NA` will be returned.
+               Note that 393 true event(s) actually occurred for the problematic event level,
+               0
+There were issues with some computations   A: x1   B: x1   C: x1   D: x1There were issues with some computations   A: x1   B: x1   C: x1   D: x1   E: x1
+There were issues with some computations   A: x1   B: x1   C: x1   D: x1   E: x1
+
+>   ## Find Best Tuning Parameters
+>   bestTune <- CV_results %>%
++   select_best(metric="roc_auc")
+>   
+>   # penalty mixture .config              
+>   #<dbl>   <dbl> <chr>                
+>    # 1) 0.00316     0.5 Preprocessor1_Model14
+>   
+>   ## Finalize the Workflow & fit it
+>   final_wf <-
++   amazon_workflow %>%
++   finalize_workflow(bestTune) %>%
++   fit(data=amazon_train)
+>   
+>   ## Predict
+>   penalized_amazon_predictions <- final_wf %>%
++   predict(new_data =amazon_test,
++           type="prob")
+>   
+>   ## Format the Predictions for Submission to Kaggle
+>   penalized_logistic_kaggle_submission <- penalized_amazon_predictions%>%
++     rename(ACTION=.pred_1) %>%
++     select(ACTION) %>%
++     bind_cols(., amazon_test) %>% #Bind predictions with test data
++     select(id, ACTION)  #keep Id, ACTION for submission
+>   
+>   ## Write out the file
+>   vroom_write(x=penalized_logistic_kaggle_submission, file="penalizedlogisticPreds.csv", delim=",")
+>   #public score .78320 with threshold at .001
+>   #public score .86225 with threshold at .00001
+> 
+> proc.time()
+   user  system elapsed 
+207.864   2.673 228.266 
