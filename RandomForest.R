@@ -37,48 +37,50 @@ sweet_recipe <- recipe(ACTION~., data=amazon_train) %>%
 
 # turn ACTION into a factor
 amazon_train$ACTION <- as.factor(amazon_train$ACTION)
-#10/16/24 Knn
-## knn model
-knn_model <- nearest_neighbor(neighbors=tune()) %>% # tune
-  set_mode("classification") %>%
-  set_engine("kknn")
+rf_model <- rand_forest(mtry = tune(),
+                      min_n=tune(),
+                      trees=500) %>%
+set_engine("ranger") %>%
+set_mode("classification")
 
-knn_wf <- workflow() %>%
+## Create a workflow with model & recipe
+
+rf_wf <- workflow() %>%
   add_recipe(sweet_recipe) %>%
-  add_model(knn_model)
+  add_model(rf_model)
 
+## Set up grid of tuning values
+tuning_grid <- grid_regular(mtry(range = c(1, 10)),
+                            min_n(),
+                            levels = 3) 
 
-## Fit or Tune Model HERE
-## Grid of values to tune over
-tuning_grid <- grid_regular(neighbors(range = c(1, 30)),
-                            levels = 5) 
-
-## Split data for CV
+## Set up K-fold CV
 folds <- vfold_cv(amazon_train, v = 5, repeats=1)
 
 ## Run the CV
-CV_results <- knn_wf %>%
+CV_results <- rf_wf %>%
   tune_grid(resamples=folds,
             grid=tuning_grid,
             metrics=metric_set(roc_auc, f_meas, sens, recall, spec,
-                               precision, accuracy)) #Or leave metrics NULL
-## Find Best Tuning Parameters
+                               precision, accuracy)) 
+
+## Find best tuning parameters
 bestTune <- CV_results %>%
   select_best(metric="roc_auc")
 
-## Finalize the Workflow & fit it
+## Finalize workflow and predict
 final_wf <-
-  knn_wf %>%
+  rf_wf %>%
   finalize_workflow(bestTune) %>%
   fit(data=amazon_train)
 
 ## Predict
-knn_amazon_predictions <- final_wf %>%
-  predict(new_data =amazon_test,
-          type="prob")
+rf_amazon_predictions <- final_wf %>%
+  predict(new_data =amazon_test, type="prob")
+
 
 ## Format the Predictions for Submission to Kaggle
-knn_logistic_kaggle_submission <- knn_amazon_predictions%>%
+rf_logistic_kaggle_submission <- rf_amazon_predictions%>%
   rename(ACTION=.pred_1) %>%
   select(ACTION) %>%
   bind_cols(., amazon_test) %>% #Bind predictions with test data
@@ -86,5 +88,4 @@ knn_logistic_kaggle_submission <- knn_amazon_predictions%>%
 
 
 ## Write out the file
-vroom_write(x=knn_logistic_kaggle_submission, file="knnPreds.csv", delim=",")
-#kaggle score 0.79621
+vroom_write(x=rf_logistic_kaggle_submission, file="rfPreds.csv", delim=",")
