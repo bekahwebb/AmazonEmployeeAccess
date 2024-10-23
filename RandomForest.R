@@ -80,7 +80,7 @@ rf_amazon_predictions <- final_wf %>%
 
 
 ## Format the Predictions for Submission to Kaggle
-rf_logistic_kaggle_submission <- rf_amazon_predictions%>%
+rf_kaggle_submission <- rf_amazon_predictions%>%
   rename(ACTION=.pred_1) %>%
   select(ACTION) %>%
   bind_cols(., amazon_test) %>% #Bind predictions with test data
@@ -88,4 +88,5 @@ rf_logistic_kaggle_submission <- rf_amazon_predictions%>%
 
 
 ## Write out the file
-vroom_write(x=rf_logistic_kaggle_submission, file="rfPreds.csv", delim=",")
+vroom_write(x=rf_kaggle_submission, file="rfPreds.csv", delim=",")
+#public score .88523 private score .87370, it took 486 seconds or about 8 minutes to run on batch
