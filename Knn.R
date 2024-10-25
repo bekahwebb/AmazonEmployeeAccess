@@ -50,7 +50,7 @@ knn_wf <- workflow() %>%
 
 ## Fit or Tune Model HERE
 ## Grid of values to tune over
-tuning_grid <- grid_regular(neighbors(range = c(1, 30)),
+tuning_grid <- grid_regular(neighbors(),
                             levels = 5) 
 
 ## Split data for CV
@@ -88,3 +88,5 @@ knn_kaggle_submission <- knn_amazon_predictions%>%
 ## Write out the file
 vroom_write(x=knn_kaggle_submission, file="knnPreds.csv", delim=",")
 #kaggle score 0.79621
+#10/25/24
+#changing the tuning for k to just be () instead of (range(1,30)) I got a public score of .75518 and a private score of .75817
