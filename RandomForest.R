@@ -18,6 +18,7 @@ library(ranger)
 library(stacks) # you need this library to create a stacked model
 library(embed) # for target encoding
 library(ggmosaic)
+library('themis')
 
 amazon_test <- vroom("./test.csv")
 
@@ -31,15 +32,17 @@ amazon_train$ACTION <- as.factor(amazon_train$ACTION)
 # Feature Engineering
 sweet_recipe <- recipe(ACTION~., data=amazon_train) %>%
   step_mutate_at(all_numeric_predictors(), fn = factor) %>% # turn all numeric features into factors
-  step_other(all_nominal_predictors(), threshold = .00001) %>% # combines rare categories that occur less often
+  step_other(all_nominal_predictors(), threshold = .001) %>% # combines rare categories that occur less often
   step_lencode_mixed(all_nominal_predictors(), outcome = vars(ACTION))%>% #target encoding
   step_normalize(all_predictors())
+  # step_smote(all_outcomes(), neighbors=3)
+  # 
 
 # turn ACTION into a factor
 amazon_train$ACTION <- as.factor(amazon_train$ACTION)
 rf_model <- rand_forest(mtry = tune(),
                       min_n=tune(),
-                      trees=500) %>%
+                      trees=850) %>%
 set_engine("ranger") %>%
 set_mode("classification")
 
@@ -90,3 +93,9 @@ rf_kaggle_submission <- rf_amazon_predictions%>%
 ## Write out the file
 vroom_write(x=rf_kaggle_submission, file="rfPreds.csv", delim=",")
 #public score .88523 private score .87370, it took 486 seconds or about 8 minutes to run on batch
+#try removing pca and then perform step smote.  It took 26 min. on batch.
+# went down with smote with a public score of .87026 and private .85833
+#trying rf with 1000 trees it took 12 min on batch to run, public .88478, private .87374
+#trying with 750 trees, it took about 9 min to run on batch, fc public .88454, private .87425
+#changed the threshold for the other char. to .001 with the trees at 850 fc
+#took 17 min. to run on batch, it went down to .86629 :(

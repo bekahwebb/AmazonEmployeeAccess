@@ -18,6 +18,7 @@ library(stacks) # you need this library to create a stacked model
 library(embed) # for target encoding
 library(ggmosaic)
 library('kernlab')
+library('themis')
 
 amazon_test <- vroom("./test.csv")
 #amazon_test
@@ -33,7 +34,8 @@ sweet_recipe <- recipe(ACTION~., data=amazon_train) %>%
   step_lencode_mixed(all_nominal_predictors(), outcome = vars(ACTION))%>% #target encoding
   step_normalize(all_predictors())%>%
   step_pca(all_predictors(), threshold=0.9)#Threshold is between 0 and 1
-  #step_nzv(all_predictors())  # Add this step to filter out near-zero variance features
+  step_smote(all_outcomes(), neighbors=3)
+  
 
 # apply the recipe to your data
 prep_recipe <- prep(sweet_recipe)
@@ -101,3 +103,5 @@ vroom_write(x=svmLinear_kaggle_submission, file="svmLinearPreds.csv", delim=",")
 #went from threshold = .00001 to threshold = .001 to see if that changes anything.
 #it got stuck at the cross validation in the batch and then killed it, and stopped running it.  
 #I'll stick with 0.86359
+#tried to see what the kaggle result would be without pca and it ran on batch and completed in 30 min.  
+#I can't transfer the new file for some reason so I am ok with getting the same score with smote added to pca.
