@@ -32,7 +32,7 @@ amazon_train$ACTION <- as.factor(amazon_train$ACTION)
 # Feature Engineering
 sweet_recipe <- recipe(ACTION~., data=amazon_train) %>%
   step_mutate_at(all_numeric_predictors(), fn = factor) %>% # turn all numeric features into factors
-  step_other(all_nominal_predictors(), threshold = .001) %>% # combines rare categories that occur less often
+  step_other(all_nominal_predictors(), threshold = .00001) %>% # combines rare categories that occur less often
   step_lencode_mixed(all_nominal_predictors(), outcome = vars(ACTION))%>% #target encoding
   step_normalize(all_predictors())
   # step_smote(all_outcomes(), neighbors=3)
@@ -42,7 +42,7 @@ sweet_recipe <- recipe(ACTION~., data=amazon_train) %>%
 amazon_train$ACTION <- as.factor(amazon_train$ACTION)
 rf_model <- rand_forest(mtry = tune(),
                       min_n=tune(),
-                      trees=850) %>%
+                      trees=500) %>%
 set_engine("ranger") %>%
 set_mode("classification")
 
@@ -58,7 +58,7 @@ tuning_grid <- grid_regular(mtry(range = c(1, 10)),
                             levels = 3) 
 
 ## Set up K-fold CV
-folds <- vfold_cv(amazon_train, v = 5, repeats=1)
+folds <- vfold_cv(amazon_train, v = 10, repeats=1)
 
 ## Run the CV
 CV_results <- rf_wf %>%
@@ -98,4 +98,4 @@ vroom_write(x=rf_kaggle_submission, file="rfPreds.csv", delim=",")
 #trying rf with 1000 trees it took 12 min on batch to run, public .88478, private .87374
 #trying with 750 trees, it took about 9 min to run on batch, fc public .88454, private .87425
 #changed the threshold for the other char. to .001 with the trees at 850 fc
-#took 17 min. to run on batch, it went down to .86629 :(
+#took 17 min. to run on batch, it went down to .86629 :( actually need to get rid of step_other
